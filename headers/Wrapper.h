@@ -4,29 +4,36 @@
 
 #include <functional>
 
+#include <memory>
+
 template<typename ClassName, typename ReturnType>
 class Wrapper : public IWrapper
 {
-private:
-    ClassName * _subj;
-    ReturnType (ClassName::*_function)();
+    private:
 
-public:
+        std::function<ReturnType(ClassName&)> _function;
 
-    //указатель на объект требуется по ТЗ
-    Wrapper(ClassName * subj, ReturnType (ClassName::*function)()): _subj(subj), _function(function) {}
+        /*
+        Из ТЗ подразумевается, что оборачиваемый объект, вероятнее всего,
+        создаётся на стеке. Поэтому, умными указателями можно пренебречь.
+        */ 
+        ClassName * _subj;
 
-    void execute() {
-        (_subj->*_function)();
-    }
+    public:
 
+
+        Wrapper(ClassName* subj, ReturnType (ClassName::*func)())
+            : _subj(subj) 
+        {
+            _function = [subj, func](ClassName& obj) -> ReturnType {
+                return (obj.*func)();
+            };
+        }
+
+        void execute() override {
+            _function(*_subj);
+        }
 
 };
 
-// Wrapper::Wrapper(/* args */)
-// {
-// }
 
-// Wrapper::~Wrapper()
-// {
-// }
