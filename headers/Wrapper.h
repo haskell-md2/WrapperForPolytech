@@ -37,6 +37,21 @@ class Wrapper : public IWrapper
             }
         }
 
+        void callWithSettedArgs(const std::map<std::string, int> args_map){
+            if constexpr (sizeof...(Args) == 0) {
+                _function(_subj);
+            } else {
+                std::array<int, sizeof...(Args)> args_array;
+                
+                for (size_t i = 0; i < sizeof...(Args); ++i) {
+                    std::string key = "arg" + std::to_string(i + 1);
+                    args_array[i] = args_map.at(key);
+                }
+                
+                callWithArray(args_array);
+            }
+        }
+
         void callWithArray(const std::array<int, sizeof...(Args)>& args) {
             auto call_func = [this, &args]<size_t... Is>(std::index_sequence<Is...>) {
                 _function(_subj, args[Is]...);
@@ -62,12 +77,18 @@ class Wrapper : public IWrapper
             callWithDefaultArgs();
         }
 
+        void execute(const std::map<std::string, int> args_map) override {
+            callWithSettedArgs(args_map);
+        }
+
 };
 
 //TODO list
 /*
-1. Сделать проверку, что в словарь подаётся ровно столько аргументов, сколько их в обарачиваемой функции
-2. Хочется, чтобы можно было подавать любой типа данных.
-3. Разобраться - на стеке или куче будет создаваться обёртка
-4. Добавить возможность передавать аргументы после регистрации.
+-. Сделать проверку, что в словарь подаётся ровно столько аргументов, сколько их в обарачиваемой функции
+-. Хочется, чтобы можно было подавать любой типа данных.
+-. Разобраться - на стеке или куче будет создаваться обёртка
+-. Добавить возможность передавать аргументы после регистрации.
+-. Проверить передачу мапы аргументов.
+-. Избавиться от повторяющегося кода в формировании кортежа аргументов.
 */
