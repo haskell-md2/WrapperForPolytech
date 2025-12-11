@@ -20,7 +20,7 @@ public:
     }
 
 
-    void execute(const std::string& command_name, const std::map<std::string, int> args_map) {
+    void execute(const std::string& command_name, const std::map<std::string, std::any> args_map) {
         auto it = commands_.find(command_name);
         it->second->execute(args_map);
     }
