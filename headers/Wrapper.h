@@ -6,6 +6,9 @@
 
 #include <memory>
 
+
+using ArgumentMap = std::vector<std::pair<std::string, int>>;
+
 template<typename ClassName, typename ReturnType, typename ... Args>
 class Wrapper : public IWrapper
 {
@@ -19,20 +22,24 @@ class Wrapper : public IWrapper
         */ 
         ClassName * _subj;
 
-        std::map<std::string, int> _default_arguments;
-
+        std::map<std::string, int> _nameOfArg_to_NumberInArgs;
+        std::array<int, sizeof...(Args)> _default_args;
 
         void callWithArgs(const std::map<std::string, int> & args_map){
             if constexpr (sizeof...(Args) == 0) {
                 _function(_subj);
             } else {
-                std::array<int, sizeof...(Args)> args_array;
-                
-                for (size_t i = 0; i < sizeof...(Args); ++i) {
-                    std::string key = "arg" + std::to_string(i + 1);
-                    args_array[i] = args_map.at(key);
+                std::array<int, sizeof...(Args)> args_array = _default_args;
+         
+                for(const auto& [key, value] : args_map){
+                    auto it = _nameOfArg_to_NumberInArgs.find(key);
+                    if(it != _nameOfArg_to_NumberInArgs.end()){
+                        args_array[it->second] = value;
+                    } else {
+                        throw std::invalid_argument("Неизвестный параметр: " + key);
+                    }
                 }
-                
+
                 callWithArray(args_array);
             }
         }
@@ -49,9 +56,15 @@ class Wrapper : public IWrapper
 
 
         Wrapper(ClassName* subj, ReturnType (ClassName::*func)(Args...),
-        const std::map<std::string, int> default_arguments)
-            : _subj(subj), _default_arguments(std::move(default_arguments)) 
-        {
+                ArgumentMap default_arguments) 
+            : _subj(subj)
+        {   
+            int i = 0;
+            for(const auto& d_a : default_arguments){ 
+                _nameOfArg_to_NumberInArgs[d_a.first] = i;
+                _default_args[i] = d_a.second;
+                i++;
+            }
             
             _function = [func](ClassName* obj, Args... args) -> ReturnType {
                 return (obj->*func)(args...);
@@ -59,7 +72,7 @@ class Wrapper : public IWrapper
         }
 
         void execute() override {
-            callWithArgs(_default_arguments);
+            callWithArgs({});
         }
 
         void execute(const std::map<std::string, int> & args_map) override {
@@ -74,9 +87,6 @@ class Wrapper : public IWrapper
 -. Хочется, чтобы можно было подавать любой типа данных.
 -. Разобраться - на стеке или куче будет создаваться обёртка
 -. Добавить обработки возможных исключений:
-    - Ключ, отличный от вида argn
-    - Пропущен какой-то argn
     - Несовместимый тип (если будет реализована соответствующая фича)
-    - Несуществующий argn
 -. Поддержка оборачивания функций с template<typename... Args>
 */
