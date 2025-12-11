@@ -22,22 +22,7 @@ class Wrapper : public IWrapper
         std::map<std::string, int> _default_arguments;
 
 
-        void callWithDefaultArgs() {
-            if constexpr (sizeof...(Args) == 0) {
-                _function(_subj);
-            } else {
-                std::array<int, sizeof...(Args)> args_array;
-                
-                for (size_t i = 0; i < sizeof...(Args); ++i) {
-                    std::string key = "arg" + std::to_string(i + 1);
-                    args_array[i] = _default_arguments.at(key);
-                }
-                
-                callWithArray(args_array);
-            }
-        }
-
-        void callWithSettedArgs(const std::map<std::string, int> args_map){
+        void callWithArgs(const std::map<std::string, int> & args_map){
             if constexpr (sizeof...(Args) == 0) {
                 _function(_subj);
             } else {
@@ -64,8 +49,8 @@ class Wrapper : public IWrapper
 
 
         Wrapper(ClassName* subj, ReturnType (ClassName::*func)(Args...),
-        const std::map<std::string, int>& default_arguments)
-            : _subj(subj), _default_arguments(default_arguments) 
+        const std::map<std::string, int> default_arguments)
+            : _subj(subj), _default_arguments(std::move(default_arguments)) 
         {
             
             _function = [func](ClassName* obj, Args... args) -> ReturnType {
@@ -74,11 +59,11 @@ class Wrapper : public IWrapper
         }
 
         void execute() override {
-            callWithDefaultArgs();
+            callWithArgs(_default_arguments);
         }
 
-        void execute(const std::map<std::string, int> args_map) override {
-            callWithSettedArgs(args_map);
+        void execute(const std::map<std::string, int> & args_map) override {
+            callWithArgs(args_map);
         }
 
 };
@@ -88,6 +73,10 @@ class Wrapper : public IWrapper
 -. Сделать проверку, что в словарь подаётся ровно столько аргументов, сколько их в обарачиваемой функции
 -. Хочется, чтобы можно было подавать любой типа данных.
 -. Разобраться - на стеке или куче будет создаваться обёртка
--. Проверить передачу мапы аргументов.
--. Избавиться от повторяющегося кода в формировании кортежа аргументов.
+-. Добавить обработки возможных исключений:
+    - Ключ, отличный от вида argn
+    - Пропущен какой-то argn
+    - Несовместимый тип (если будет реализована соответствующая фича)
+    - Несуществующий argn
+-. Поддержка оборачивания функций с template<typename... Args>
 */
