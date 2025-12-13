@@ -2,30 +2,27 @@
 
 #include <map>
 #include <string>
+#include <any>
 
 #include "IWrapper.h"
+#include "ExecuteResult.h"
 
-class Engine
-{
-
+class Engine {
 public:
-    void register_command(IWrapper * wrapper, const std::string& command_name) {
+    void register_command(IWrapper* wrapper, const std::string& command_name) {
         commands_[command_name] = wrapper;
     }
 
-
-    void execute(const std::string& command_name) {
+    ExecuteResult execute(const std::string& command_name) {
         auto it = commands_.find(command_name);
-        it->second->execute();
+        return ExecuteResult(it->second->execute());
     }
 
-
-    void execute(const std::string& command_name, const std::map<std::string, std::any> args_map) {
+    ExecuteResult execute(const std::string& command_name, const std::map<std::string, std::any>& args_map) {
         auto it = commands_.find(command_name);
-        it->second->execute(args_map);
+        return ExecuteResult(it->second->execute(args_map));
     }
 
-    private:
-        std::map<std::string, IWrapper *> commands_;
+private:
+    std::map<std::string, IWrapper*> commands_;
 };
-
