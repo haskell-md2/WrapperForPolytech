@@ -67,9 +67,6 @@ class Wrapper : public IWrapper {
             };
         }
 
-        std::any execute() override {
-            return callWithArgs({});
-        }
 
         std::any execute(const std::map<std::string, std::any>& args_map) override {
             return callWithArgs(args_map);
