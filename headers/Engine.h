@@ -1,6 +1,6 @@
 #pragma once
 
-#include <map>
+#include <unordered_map>
 #include <string>
 #include <any>
 
@@ -14,7 +14,7 @@ public:
     }
 
     ExecuteResult execute(const std::string& command_name, 
-                        const std::map<std::string, std::any>& args_map = {}) {
+                        const std::unordered_map<std::string, std::any>& args_map = {}) {
         auto it = commands_.find(command_name);
         if (it == commands_.end()) {
             throw std::runtime_error("Команда не найдена: " + command_name);
@@ -23,5 +23,5 @@ public:
     }
 
 private:
-    std::map<std::string, IWrapper*> commands_;
+    std::unordered_map<std::string, IWrapper*> commands_;
 };

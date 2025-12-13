@@ -13,10 +13,10 @@ class Wrapper : public IWrapper {
     private:
         std::function<ReturnType(ClassName*, Args...)> _function;
         ClassName * _subj;
-        std::map<std::string, int> _nameOfArg_to_NumberInArgs;
+        std::unordered_map<std::string, int> _nameOfArg_to_NumberInArgs;
         std::array<std::any, sizeof...(Args)> _default_args;
 
-        std::any callWithArgs(const std::map<std::string, std::any>& args_map) {
+        std::any callWithArgs(const std::unordered_map<std::string, std::any>& args_map) {
             if constexpr (sizeof...(Args) == 0) {
                 if constexpr (std::is_void_v<ReturnType>) {
                     _function(_subj);
@@ -68,7 +68,7 @@ class Wrapper : public IWrapper {
         }
 
 
-        std::any execute(const std::map<std::string, std::any>& args_map) override {
+        std::any execute(const std::unordered_map<std::string, std::any>& args_map) override {
             return callWithArgs(args_map);
         }
 };
