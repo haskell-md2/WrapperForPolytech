@@ -7,6 +7,10 @@
 Всё, что у нас есть.
 
 ## Сборка примера
+- cmake -S . -B build
+- cmake --build build
+
+Если у вас Windows, скомпилированный файл окажется в build/bin/Debug
 
 ## О классе Wrapper
 
