@@ -1,9 +1,11 @@
 #pragma once
 
+#include <any>
 #include <functional>
 #include <sstream>
 #include <typeindex>
 #include <typeinfo>
+#include <vector>
 
 #include "ExecuteResult.h"
 #include "IWrapper.h"
@@ -16,13 +18,13 @@ class Wrapper : public IWrapper {
     std::function<ReturnType(ClassName *, Args...)> _function;
     ClassName *_subj;
     std::unordered_map<std::string, int> _nameOfArg_to_NumberInArgs;
-    std::array<std::any, sizeof...(Args)> _default_args;
-    std::array<std::type_index, sizeof...(Args)> _expected_types;
+
+    std::vector<std::any> _default_args;
+    std::vector<std::type_index> _expected_types;
 
     template <std::size_t... Is>
-    std::any callWithArrayImpl(
-        const std::array<std::any, sizeof...(Args)> &args,
-        std::index_sequence<Is...>) {
+    std::any callWithArrayImpl(const std::vector<std::any> &args,
+                               std::index_sequence<Is...>) {
         if constexpr (std::is_void_v<ReturnType>) {
             _function(_subj, std::any_cast<Args>(args[Is])...);
             return std::any(ExecuteResult(std::any()));
@@ -33,7 +35,7 @@ class Wrapper : public IWrapper {
         }
     }
 
-    std::any callWithArray(const std::array<std::any, sizeof...(Args)> &args) {
+    std::any callWithArray(const std::vector<std::any> &args) {
         return callWithArrayImpl(args, std::index_sequence_for<Args...>{});
     }
 
@@ -48,8 +50,7 @@ class Wrapper : public IWrapper {
                 return std::any(ExecuteResult(result));
             }
         } else {
-            std::array<std::any, sizeof...(Args)> args_array = _default_args;
-
+            std::vector<std::any> args_array = _default_args;
             for (const auto &[key, value] : args_map) {
                 auto it = _nameOfArg_to_NumberInArgs.find(key);
                 if (it != _nameOfArg_to_NumberInArgs.end()) {
@@ -62,9 +63,7 @@ class Wrapper : public IWrapper {
         }
     }
 
-    template <std::size_t... Is>
-    static constexpr std::array<std::type_index, sizeof...(Args)>
-    makeExpectedTypes(std::index_sequence<Is...>) {
+    static std::vector<std::type_index> makeExpectedTypes() {
         if constexpr (sizeof...(Args) > 0) {
             return {std::type_index(typeid(Args))...};
         } else {
@@ -75,9 +74,7 @@ class Wrapper : public IWrapper {
    public:
     Wrapper(ClassName *subj, ReturnType (ClassName::*func)(Args...),
             ArgumentMap default_arguments = {})
-        : _subj(subj),
-          _expected_types(
-              makeExpectedTypes(std::index_sequence_for<Args...>{})) {
+        : _subj(subj), _expected_types(makeExpectedTypes()) {
         if (default_arguments.size() != sizeof...(Args)) {
             std::ostringstream error_msg;
             error_msg << "Несовпадение количества параметров: ожидается "
@@ -86,12 +83,15 @@ class Wrapper : public IWrapper {
             throw std::invalid_argument(error_msg.str());
         }
 
+        if constexpr (sizeof...(Args) > 0) {
+            _default_args.reserve(sizeof...(Args));
+        }
+
         int i = 0;
         for (const auto &[name, value] : default_arguments) {
             if constexpr (sizeof...(Args) > 0) {
                 std::type_index expected_type = _expected_types[i];
                 std::type_index actual_type = value.type();
-
                 if (expected_type != actual_type) {
                     std::ostringstream error_msg;
                     error_msg << "Несовпадение типа параметра \"" << name
@@ -101,9 +101,8 @@ class Wrapper : public IWrapper {
                     throw std::invalid_argument(error_msg.str());
                 }
             }
-
             _nameOfArg_to_NumberInArgs[name] = i;
-            _default_args[i] = value;
+            _default_args.push_back(value);
             i++;
         }
 
