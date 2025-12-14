@@ -41,6 +41,13 @@ class ExecuteResult {
     }
 
     void print(std::ostream &os) const { printer_(os, result_); }
+
+
+    ExecuteResult(const ExecuteResult&) = default;
+    ExecuteResult(ExecuteResult&&) noexcept = default;
+    ExecuteResult& operator=(const ExecuteResult&) = default;
+    ExecuteResult& operator=(ExecuteResult&&) noexcept = default;
+    ~ExecuteResult() = default;
 };
 
 inline std::ostream &operator<<(std::ostream &os, const ExecuteResult &result) {
