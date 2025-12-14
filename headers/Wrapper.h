@@ -74,7 +74,7 @@ class Wrapper : public IWrapper {
 
    public:
     Wrapper(ClassName *subj, ReturnType (ClassName::*func)(Args...),
-            ArgumentMap default_arguments)
+            ArgumentMap default_arguments = {})
         : _subj(subj),
           _expected_types(
               makeExpectedTypes(std::index_sequence_for<Args...>{})) {
