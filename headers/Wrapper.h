@@ -1,86 +1,80 @@
 #pragma once
 
-#include "IWrapper.h"
-
 #include <functional>
 
+#include "ExecuteResult.h"
+#include "IWrapper.h"
 
 using ArgumentMap = std::vector<std::pair<std::string, std::any>>;
-
-template<typename ClassName, typename ReturnType, typename... Args>
+template <typename ClassName, typename ReturnType, typename... Args>
 class Wrapper : public IWrapper {
+   private:
+    std::function<ReturnType(ClassName *, Args...)> _function;
+    ClassName *_subj;
+    std::unordered_map<std::string, int> _nameOfArg_to_NumberInArgs;
+    std::array<std::any, sizeof...(Args)> _default_args;
 
-    private:
-        std::function<ReturnType(ClassName*, Args...)> _function;
-        ClassName * _subj;
-        std::unordered_map<std::string, int> _nameOfArg_to_NumberInArgs;
-        std::array<std::any, sizeof...(Args)> _default_args;
+    template <std::size_t... Is>
+    std::any callWithArrayImpl(
+        const std::array<std::any, sizeof...(Args)> &args,
+        std::index_sequence<Is...>) {
+        if constexpr (std::is_void_v<ReturnType>) {
+            _function(_subj, std::any_cast<Args>(args[Is])...);
+            return std::any(ExecuteResult(std::any()));
+        } else {
+            ReturnType result =
+                _function(_subj, std::any_cast<Args>(args[Is])...);
+            return std::any(ExecuteResult(result));
+        }
+    }
 
-        std::any callWithArgs(const std::unordered_map<std::string, std::any>& args_map) {
-            if constexpr (sizeof...(Args) == 0) {
-                if constexpr (std::is_void_v<ReturnType>) {
-                    _function(_subj);
-                    return {};
-                } else {
-                    return _function(_subj);
-                }
+    std::any callWithArray(const std::array<std::any, sizeof...(Args)> &args) {
+        return callWithArrayImpl(args, std::index_sequence_for<Args...>{});
+    }
+
+    std::any callWithArgs(
+        const std::unordered_map<std::string, std::any> &args_map) {
+        if constexpr (sizeof...(Args) == 0) {
+            if constexpr (std::is_void_v<ReturnType>) {
+                _function(_subj);
+                return std::any(ExecuteResult(std::any()));
             } else {
-                std::array<std::any, sizeof...(Args)> args_array = _default_args;
-                for(const auto& [key, value] : args_map) {
-                    auto it = _nameOfArg_to_NumberInArgs.find(key);
-                    if(it != _nameOfArg_to_NumberInArgs.end()) {
-                        args_array[it->second] = value;
-                    } else {
-                        throw std::invalid_argument("Неизвестный параметр: " + key);
-                    }
-                }
-                return callWithArray(args_array);
+                ReturnType result = _function(_subj);
+                return std::any(ExecuteResult(result));
             }
-        }
+        } else {
+            std::array<std::any, sizeof...(Args)> args_array = _default_args;
 
-        std::any callWithArray(const std::array<std::any, sizeof...(Args)>& args) {
-            auto call_func = [this, &args]<std::size_t... Is>(std::index_sequence<Is...>) {
-                if constexpr (std::is_void_v<ReturnType>) {
-                    _function(_subj, std::any_cast<Args>(args[Is])...);
-                    return std::any{};
+            for (const auto &[key, value] : args_map) {
+                auto it = _nameOfArg_to_NumberInArgs.find(key);
+                if (it != _nameOfArg_to_NumberInArgs.end()) {
+                    args_array[it->second] = value;
                 } else {
-                    return std::any(_function(_subj, std::any_cast<Args>(args[Is])...));
+                    throw std::invalid_argument("Неизвестный параметр: " + key);
                 }
-            };
-            return call_func(std::index_sequence_for<Args...>{});
-        }
-
-    public:
-        Wrapper(ClassName* subj, ReturnType (ClassName::*func)(Args...),
-                ArgumentMap default_arguments)
-            : _subj(subj)
-        {
-            int i = 0;
-            for(const auto& d_a : default_arguments) {
-                _nameOfArg_to_NumberInArgs[d_a.first] = i;
-                _default_args[i] = d_a.second;
-                i++;
             }
+            return callWithArray(args_array);
+        }
+    }
 
-            _function = [func](ClassName* obj, Args... args) -> ReturnType {
-                return (obj->*func)(args...);
-            };
+   public:
+    Wrapper(ClassName *subj, ReturnType (ClassName::*func)(Args...),
+            ArgumentMap default_arguments)
+        : _subj(subj) {
+        int i = 0;
+        for (const auto &[name, value] : default_arguments) {
+            _nameOfArg_to_NumberInArgs[name] = i;
+            _default_args[i] = value;
+            i++;
         }
 
+        _function = [func](ClassName *obj, Args... args) -> ReturnType {
+            return (obj->*func)(args...);
+        };
+    }
 
-        std::any execute(const std::unordered_map<std::string, std::any>& args_map) override {
-            return callWithArgs(args_map);
-        }
+    std::any execute(
+        const std::unordered_map<std::string, std::any> &args_map) override {
+        return callWithArgs(args_map);
+    }
 };
-
-template<typename ClassName, typename ReturnType, typename... Args>
-Wrapper(ClassName*, ReturnType (ClassName::*)(Args...), ArgumentMap)
-    -> Wrapper<ClassName, ReturnType, Args...>;
-
-//TODO list
-/*
--. Сделать проверку, что в словарь подаётся ровно столько аргументов, сколько их в обарачиваемой функции
--. Разобраться - на стеке или куче будет создаваться обёртка
--. Добавить обработки возможных исключений:
-    - Несовместимый тип (если будет реализована соответствующая фича)
-*/
